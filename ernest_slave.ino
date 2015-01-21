@@ -38,10 +38,10 @@ unsigned long last_update_time = 0;
 
 //// Global data state
 // Atmospheric data
-float temp; // Celcius
-float pressure; // Millibar
+float G_TEMP; // Celcius
+float G_PRESSURE; // Millibar
 // Node data
-uint8_t node_id;
+uint8_t G_NODE_ID;
 
 struct datagram {
     float temp;
@@ -101,7 +101,7 @@ void sendTemp(){
     radio.stopListening();
 
     // Set the data & send
-    struct datagram d =  { temp, pressure, node_id };
+    struct datagram d =  { G_TEMP, G_PRESSURE, G_NODE_ID };
     bool ok = radio.write(&d, sizeof(struct datagram));
 
     if (ok) {
@@ -134,7 +134,7 @@ void sendTemp(){
 
 void updateTemp(){
     char status;
-    double t_celsius,P,p0,a;
+    double t_celsius, p_mbar;
     status = sensor.startTemperature();
     if (status != 0){
         // Wait for the measurement to complete:
@@ -145,7 +145,7 @@ void updateTemp(){
         // Function returns 1 if successful, 0 if failure.
         status = sensor.getTemperature(t_celsius);
         if (status != 0){
-            temp = t_celsius;
+            G_TEMP = t_celsius;
 
             // Start a pressure measurement:
             // The parameter is the oversampling setting, from 0 to 3
@@ -157,13 +157,11 @@ void updateTemp(){
                 delay(status);
 
                 // Get the pressure (dependent on temperature)
-                status = sensor.getPressure(P,t_celsius);
+                status = sensor.getPressure(p_mbar, t_celsius);
                 if (status != 0){
                     // The pressure sensor returns abolute pressure, which varies with altitude.
                     // To remove the effects of altitude, use the sealevel function and your current altitude.
-                    p0 = sensor.sealevel(P,ALTITUDE);
-                    pressure = p0;
-
+                    G_PRESSURE = sensor.sealevel(p_mbar, ALTITUDE);
                 }
             }
         }

@@ -52,6 +52,7 @@ struct datagram {
 void updateTemp();
 void sendTemp();
 void setStatusPins(uint8_t ok, uint8_t err, uint8_t data);
+void updateNodeID();
 
 void setup() {
     // Setup serial
@@ -67,6 +68,12 @@ void setup() {
     pinMode(PIN_L_OK, OUTPUT);
     pinMode(PIN_L_ERR, OUTPUT);
     pinMode(PIN_L_DATA, OUTPUT);
+
+    // Set input pins for the DIP switch
+    pinMode(PIN_DIP_1, INPUT);
+    pinMode(PIN_DIP_2, INPUT);
+    pinMode(PIN_DIP_3, INPUT);
+    pinMode(PIN_DIP_1, INPUT);
 
     // Setup RF
     radio.begin();
@@ -84,6 +91,7 @@ void setup() {
 void loop() {
     if(millis() - last_update_time > update_interval) {
         last_update_time = millis();
+        updateNodeID();
         updateTemp();
         sendTemp();
     }
@@ -94,6 +102,14 @@ void setStatusPins(uint8_t ok, uint8_t err, uint8_t data){
     digitalWrite(PIN_L_OK, ok);
     digitalWrite(PIN_L_ERR, err);
     digitalWrite(PIN_L_DATA, data);
+}
+
+void updateNodeID(){
+    G_NODE_ID = 0;
+    G_NODE_ID |= digitalRead(PIN_DIP_1) << 0;
+    G_NODE_ID |= digitalRead(PIN_DIP_2) << 1;
+    G_NODE_ID |= digitalRead(PIN_DIP_3) << 2;
+    G_NODE_ID |= digitalRead(PIN_DIP_4) << 3;
 }
 
 void sendTemp(){

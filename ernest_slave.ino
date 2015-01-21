@@ -77,11 +77,12 @@ void setup() {
 
     // Setup RF
     radio.begin();
-    radio.setRetries(15, 15);
-    radio.setPayloadSize(8);
+    radio.enableAckPayload();
+    //radio.setRetries(15, 15);
+    //radio.setPayloadSize(8);
     radio.openWritingPipe(rf_pipe);
 
-    radio.startListening();
+    // Dump details for debugging
     radio.printDetails();
 }
 
@@ -112,40 +113,42 @@ void updateNodeID(){
     G_NODE_ID |= digitalRead(PIN_DIP_4) << 3;
 }
 
+// Send a temp value across the aether.
+// LED codes:
+// G  R  B
+// 0  0  1 - Sending data
+// 1  0  1 - Data sent successfully
+// 0  1  0 - Sending failed
+// 0  1  1 - No ACK received
+// 1  0  0 - All done, all well
 void sendTemp(){
-    // First, stop listening so we can talk.
-    radio.stopListening();
+    // Set LEDs for data transmit
+    setStatusPins(LOW, LOW, HIGH);
 
     // Set the data & send
     struct datagram d =  { G_TEMP, G_PRESSURE, G_NODE_ID };
     bool ok = radio.write(&d, sizeof(struct datagram));
 
     if (ok) {
-        printf("ok...");
+        setStatusPins(HIGH, LOW, HIGH);
     } else {
-        printf("failed.\n\r");
+        // Sending data failed, set error status
+        setStatusPins(LOW, HIGH, LOW);
+        printf("radio.write failed.");
+        return;
     }
 
-    // Now, continue listening
-    radio.startListening();
-
-    // Wait for an ACK from the master
-    unsigned long started_waiting_at = millis();
-    bool timeout = false;
-    while (!radio.available() && !timeout)
-        if (millis() - started_waiting_at > 200)
-            timeout = true;
-
-    if (timeout) {
-        printf("Failed, response timed out.\n\r");
+    // Check for an ACK
+    uint32_t msg_ack;
+    if (radio.isAckPayloadAvailable()){
+        radio.read(&msg_ack, sizeof(msg_ack));
+        printf("Ack: [%lu] ", msg_ack);
+        setStatusPins(HIGH, LOW, LOW);
     } else {
-        // Grab the response, compare, and send to debugging spew
-        unsigned long got_time;
-        radio.read(&got_time, sizeof(unsigned long));
-
-        // Spew it
-        printf("Got response %lu, round-trip delay: %lu\n\r", got_time, millis() - got_time);
+        // Data wasn't ACKd, set data and err LEDs
+        setStatusPins(LOW, HIGH, HIGH);
     }
+
 }
 
 void updateTemp(){

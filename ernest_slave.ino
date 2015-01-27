@@ -43,6 +43,10 @@ float G_PRESSURE; // Millibar
 // Node data
 uint8_t G_NODE_ID;
 
+// Bit to say whether an error has occured and the LEDs should not be cleared
+// for the idle animation
+bool error_code = false;
+
 struct datagram {
     float temp;
     float pressure;
@@ -52,6 +56,7 @@ struct datagram {
 void updateTemp();
 void sendTemp();
 void panic();
+void idle();
 void setStatusPins(uint8_t ok, uint8_t err, uint8_t data);
 void updateNodeID();
 
@@ -68,6 +73,21 @@ void panic(){
     }
 }
 
+void idle(){
+    setStatusPins(HIGH, LOW, LOW);
+    delay(200);
+    setStatusPins(HIGH, HIGH, LOW);
+    delay(200);
+    setStatusPins(HIGH, HIGH, HIGH);
+    delay(1000);
+    setStatusPins(LOW, HIGH, HIGH);
+    delay(200);
+    setStatusPins(LOW, LOW, HIGH);
+    delay(200);
+    setStatusPins(LOW, LOW, LOW);
+    delay(500);
+}
+
 void setup() {
     // Setup serial
     Serial.begin(9600);
@@ -76,6 +96,7 @@ void setup() {
     pinMode(PIN_L_OK, OUTPUT);
     pinMode(PIN_L_ERR, OUTPUT);
     pinMode(PIN_L_DATA, OUTPUT);
+    setStatusPins(HIGH, LOW, LOW);
 
     // Setup atmospheric sensor
     if (sensor.begin()){
@@ -110,7 +131,12 @@ void loop() {
         updateTemp();
         sendTemp();
     }
-    delay(1000);
+
+    if (error_code) {
+        delay(1000);
+    } else {
+        idle();
+    }
 }
 
 void setStatusPins(uint8_t ok, uint8_t err, uint8_t data){
@@ -136,6 +162,9 @@ void updateNodeID(){
 // 0  1  1 - No ACK received
 // 1  0  0 - All done, all well
 void sendTemp(){
+    // Clear error bit
+    error_code = false;
+
     // Set LEDs for data transmit
     setStatusPins(LOW, LOW, HIGH);
 
@@ -149,6 +178,7 @@ void sendTemp(){
         // Sending data failed, set error status
         setStatusPins(LOW, HIGH, LOW);
         printf("radio.write failed.");
+        error_code = true;
         return;
     }
 
@@ -161,8 +191,8 @@ void sendTemp(){
     } else {
         // Data wasn't ACKd, set data and err LEDs
         setStatusPins(LOW, HIGH, HIGH);
+        error_code = true;
     }
-
 }
 
 void updateTemp(){

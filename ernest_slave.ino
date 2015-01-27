@@ -9,9 +9,9 @@
 #define PIN_R_CSN 7
 
 // Output pins for status LEDs
-#define PIN_L_OK 6
-#define PIN_L_ERR 5
-#define PIN_L_DATA 4
+#define PIN_L_OK 12
+#define PIN_L_ERR 11
+#define PIN_L_DATA 10
 
 // Input pins for identity DIP switch
 #define PIN_DIP_1 9

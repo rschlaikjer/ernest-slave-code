@@ -51,23 +51,37 @@ struct datagram {
 
 void updateTemp();
 void sendTemp();
+void panic();
 void setStatusPins(uint8_t ok, uint8_t err, uint8_t data);
 void updateNodeID();
+
+/*
+ * Halt and display the panic lights
+ * (alternating all on, all off)
+ */
+void panic(){
+    while(1){
+        setStatusPins(LOW, LOW, LOW);
+        delay(1000);
+        setStatusPins(HIGH, HIGH, HIGH);
+        delay(1000);
+    }
+}
 
 void setup() {
     // Setup serial
     Serial.begin(9600);
 
-    // Setup atmospheric sensor
-    if (sensor.begin()){
-    } else {
-        while(1); // Busy halt
-    }
-
     // Set output pins for the LEDs
     pinMode(PIN_L_OK, OUTPUT);
     pinMode(PIN_L_ERR, OUTPUT);
     pinMode(PIN_L_DATA, OUTPUT);
+
+    // Setup atmospheric sensor
+    if (sensor.begin()){
+    } else {
+        panic();
+    }
 
     // Set input pins for the DIP switch
     pinMode(PIN_DIP_1, INPUT);

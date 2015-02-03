@@ -3,6 +3,7 @@
 #include <Wire.h>
 #include <nRF24L01.h>
 #include <RF24.h>
+#include "printf.h"
 
 // SPI pins for 2.4GHz transceiver
 #define PIN_R_CE 8
@@ -14,10 +15,10 @@
 #define PIN_L_DATA 10
 
 // Input pins for identity DIP switch
-#define PIN_DIP_1 9
-#define PIN_DIP_2 10
-#define PIN_DIP_3 11
-#define PIN_DIP_4 12
+//#define PIN_DIP_1 9
+//#define PIN_DIP_2 10
+//#define PIN_DIP_3 11
+//#define PIN_DIP_4 12
 
 //// Hardware abstractions
 
@@ -27,12 +28,12 @@ SFE_BMP180 sensor;
 #define ALTITUDE 4.0
 
 // nRF24L01 radio
-RF24 radio(PIN_R_CSN, PIN_R_CE);
+RF24 radio(PIN_R_CE, PIN_R_CSN);
 // Pipe address to communicate on
 uint64_t rf_pipe = 0xF0F0F0F0E1LL;
 
 // delay between updates, millis
-const unsigned long update_interval = 30*1000;
+const unsigned long update_interval = 5*1000;
 // Last time we sent temp data, millis
 unsigned long last_update_time = 0;
 
@@ -91,8 +92,13 @@ void idle(){
 void setup() {
     // Setup serial
     Serial.begin(9600);
+    printf_begin();
+
+    // Wait for debugger
+    delay(5000);
 
     // Set output pins for the LEDs
+    Serial.println("Set LED pimodes");
     pinMode(PIN_L_OK, OUTPUT);
     pinMode(PIN_L_ERR, OUTPUT);
     pinMode(PIN_L_DATA, OUTPUT);
@@ -101,23 +107,30 @@ void setup() {
     // Setup atmospheric sensor
     if (sensor.begin()){
     } else {
-        panic();
+        Serial.println(" Failed!");
+        //panic();
     }
 
     // Set input pins for the DIP switch
-    pinMode(PIN_DIP_1, INPUT);
-    pinMode(PIN_DIP_2, INPUT);
-    pinMode(PIN_DIP_3, INPUT);
-    pinMode(PIN_DIP_1, INPUT);
+    Serial.println("Setting DIP pins...");
+    //pinMode(PIN_DIP_1, INPUT);
+    //pinMode(PIN_DIP_2, INPUT);
+    //pinMode(PIN_DIP_3, INPUT);
+    //pinMode(PIN_DIP_1, INPUT);
 
     // Setup RF
+    Serial.println("Starting radio...");
+    Serial.println("Begin...");
     radio.begin();
+    Serial.println("Enable ACKs...");
     radio.enableAckPayload();
     //radio.setRetries(15, 15);
-    //radio.setPayloadSize(8);
+    //radio.setPayloadSize(9);
+    Serial.println("Open pipe...");
     radio.openWritingPipe(rf_pipe);
 
     // Dump details for debugging
+    Serial.println("Details:");
     radio.printDetails();
 }
 
@@ -147,10 +160,10 @@ void setStatusPins(uint8_t ok, uint8_t err, uint8_t data){
 
 void updateNodeID(){
     G_NODE_ID = 0;
-    G_NODE_ID |= digitalRead(PIN_DIP_1) << 0;
-    G_NODE_ID |= digitalRead(PIN_DIP_2) << 1;
-    G_NODE_ID |= digitalRead(PIN_DIP_3) << 2;
-    G_NODE_ID |= digitalRead(PIN_DIP_4) << 3;
+    //G_NODE_ID |= digitalRead(PIN_DIP_1) << 0;
+    //G_NODE_ID |= digitalRead(PIN_DIP_2) << 1;
+    //G_NODE_ID |= digitalRead(PIN_DIP_3) << 2;
+    //G_NODE_ID |= digitalRead(PIN_DIP_4) << 3;
 }
 
 // Send a temp value across the aether.
@@ -177,7 +190,7 @@ void sendTemp(){
     } else {
         // Sending data failed, set error status
         setStatusPins(LOW, HIGH, LOW);
-        printf("radio.write failed.");
+        printf("radio.write failed.\n");
         error_code = true;
         return;
     }

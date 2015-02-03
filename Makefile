@@ -6,6 +6,6 @@ CXXFLAGS:=
 unexport CFLAGS
 unexport CXXFLAGS
 
-MONITOR_PORT := /dev/ttyACM3
+MONITOR_PORT := /dev/ttyACM0
 
 include /usr/share/arduino/Arduino.mk

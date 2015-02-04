@@ -3,6 +3,7 @@
 #include <Wire.h>
 #include <nRF24L01.h>
 #include <RF24.h>
+#include "printf.h"
 
 // SPI pins for 2.4GHz transceiver
 #define PIN_R_CE 8
@@ -14,10 +15,10 @@
 #define PIN_L_DATA 10
 
 // Input pins for identity DIP switch
-#define PIN_DIP_1 9
-#define PIN_DIP_2 10
-#define PIN_DIP_3 11
-#define PIN_DIP_4 12
+#define PIN_DIP_1 2
+#define PIN_DIP_2 3
+#define PIN_DIP_3 4
+#define PIN_DIP_4 5
 
 //// Hardware abstractions
 
@@ -27,9 +28,9 @@ SFE_BMP180 sensor;
 #define ALTITUDE 4.0
 
 // nRF24L01 radio
-RF24 radio(PIN_R_CSN, PIN_R_CE);
+RF24 radio(PIN_R_CE, PIN_R_CSN);
 // Pipe address to communicate on
-uint64_t rf_pipe = 0xF0F0F0F0E1LL;
+uint64_t rf_pipes[2] = { 0xF0F0F0F0E1LL, 0xF0F0F0F0D2LL };
 
 // delay between updates, millis
 const unsigned long update_interval = 30*1000;
@@ -48,8 +49,8 @@ uint8_t G_NODE_ID;
 bool error_code = false;
 
 struct datagram {
-    float temp;
-    float pressure;
+    double temp;
+    double pressure;
     uint8_t node_id;
 };
 
@@ -91,6 +92,8 @@ void idle(){
 void setup() {
     // Setup serial
     Serial.begin(9600);
+    printf_begin();
+    delay(5000);
 
     // Set output pins for the LEDs
     pinMode(PIN_L_OK, OUTPUT);
@@ -113,12 +116,15 @@ void setup() {
     // Setup RF
     radio.begin();
     radio.enableAckPayload();
-    //radio.setRetries(15, 15);
-    //radio.setPayloadSize(8);
-    radio.openWritingPipe(rf_pipe);
+    radio.setRetries(15, 15);
+    radio.setPayloadSize(16);
+    radio.openWritingPipe(rf_pipes[0]);
+    radio.openReadingPipe(1, rf_pipes[1]);
+    radio.startListening();
 
     // Dump details for debugging
     radio.printDetails();
+
 }
 
 /*
@@ -169,8 +175,10 @@ void sendTemp(){
     setStatusPins(LOW, LOW, HIGH);
 
     // Set the data & send
+    radio.stopListening();
     struct datagram d =  { G_TEMP, G_PRESSURE, G_NODE_ID };
     bool ok = radio.write(&d, sizeof(struct datagram));
+    radio.startListening();
 
     if (ok) {
         setStatusPins(HIGH, LOW, HIGH);

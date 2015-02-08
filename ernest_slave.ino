@@ -6,19 +6,19 @@
 #include "printf.h"
 
 // SPI pins for 2.4GHz transceiver
-#define PIN_R_CE 8
-#define PIN_R_CSN 7
+#define PIN_R_CE 10
+#define PIN_R_CSN 9
 
 // Output pins for status LEDs
-#define PIN_L_OK 12
-#define PIN_L_ERR 11
-#define PIN_L_DATA 10
+#define PIN_L_OK 2
+#define PIN_L_ERR 3
+#define PIN_L_DATA 4
 
 // Input pins for identity DIP switch
-#define PIN_DIP_1 2
-#define PIN_DIP_2 3
-#define PIN_DIP_3 4
-#define PIN_DIP_4 5
+#define PIN_DIP_1 5
+#define PIN_DIP_2 6
+#define PIN_DIP_3 7
+#define PIN_DIP_4 8
 
 //// Hardware abstractions
 

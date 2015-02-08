@@ -111,7 +111,7 @@ void setup() {
     pinMode(PIN_DIP_1, INPUT);
     pinMode(PIN_DIP_2, INPUT);
     pinMode(PIN_DIP_3, INPUT);
-    pinMode(PIN_DIP_1, INPUT);
+    pinMode(PIN_DIP_4, INPUT);
 
     // Setup RF
     radio.begin();
@@ -157,6 +157,8 @@ void updateNodeID(){
     G_NODE_ID |= digitalRead(PIN_DIP_2) << 1;
     G_NODE_ID |= digitalRead(PIN_DIP_3) << 2;
     G_NODE_ID |= digitalRead(PIN_DIP_4) << 3;
+    Serial.print("Node ID: ");
+    Serial.println(G_NODE_ID);
 }
 
 // Send a temp value across the aether.
@@ -185,7 +187,7 @@ void sendTemp(){
     } else {
         // Sending data failed, set error status
         setStatusPins(LOW, HIGH, LOW);
-        printf("radio.write failed.");
+        Serial.println("radio.write failed.");
         error_code = true;
         return;
     }
@@ -233,6 +235,10 @@ void updateTemp(){
                     // The pressure sensor returns abolute pressure, which varies with altitude.
                     // To remove the effects of altitude, use the sealevel function and your current altitude.
                     G_PRESSURE = sensor.sealevel(p_mbar, ALTITUDE);
+                    Serial.print("Temp: ");
+                    Serial.print(G_TEMP);
+                    Serial.print(" Pressure: ");
+                    Serial.println(G_PRESSURE);
                 }
             }
         }

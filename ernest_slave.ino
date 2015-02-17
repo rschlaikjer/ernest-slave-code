@@ -5,6 +5,8 @@
 #include <RF24.h>
 #include "printf.h"
 
+#define DEBUG 0
+
 // SPI pins for 2.4GHz transceiver
 #define PIN_R_CE 10
 #define PIN_R_CSN 9
@@ -51,7 +53,9 @@ bool error_code = false;
 struct datagram {
     double temp;
     double pressure;
+    double humidity;
     uint8_t node_id;
+    uint64_t parity;
 };
 
 void updateTemp();
@@ -113,18 +117,20 @@ void setup() {
     pinMode(PIN_DIP_3, INPUT);
     pinMode(PIN_DIP_4, INPUT);
 
+    Serial.print("Datagram size: ");
+    Serial.println(sizeof(struct datagram));
+
     // Setup RF
     radio.begin();
     radio.enableAckPayload();
     radio.setRetries(15, 15);
-    radio.setPayloadSize(16);
+    radio.setPayloadSize(22);
     radio.openWritingPipe(rf_pipes[0]);
     radio.openReadingPipe(1, rf_pipes[1]);
     radio.startListening();
 
     // Dump details for debugging
     radio.printDetails();
-
 }
 
 /*
@@ -161,6 +167,35 @@ void updateNodeID(){
     Serial.println(G_NODE_ID);
 }
 
+void print_uint64_bin(uint64_t u){
+    uint64_t b = 1;
+    for (uint64_t i = 0; i < 64; i++){
+        if (u & b){
+            Serial.print("1");
+        } else {
+            Serial.print("0");
+        }
+        b = b << 1;
+    }
+}
+
+uint64_t dec_of_float(double d){
+    uint64_t ret = 0;
+    unsigned char *ds = (unsigned char *) &d;
+    for (unsigned i = 0; i < sizeof (double) && i < 8; i++){
+        ret = ret | (ds[i] << (i * 8));
+    }
+    return ret;
+}
+
+uint64_t parity(double t, double p, double h, uint64_t node_id){
+    uint64_t ret = node_id;
+    ret = ret ^ dec_of_float(t);
+    ret = ret ^ dec_of_float(p);
+    ret = ret ^ dec_of_float(h);
+    return ret;
+}
+
 // Send a temp value across the aether.
 // LED codes:
 // G  R  B
@@ -178,7 +213,35 @@ void sendTemp(){
 
     // Set the data & send
     radio.stopListening();
-    struct datagram d =  { G_TEMP, G_PRESSURE, G_NODE_ID };
+    struct datagram d;
+    d.temp = G_TEMP;
+    d.pressure = G_PRESSURE;
+    d.humidity = 0;
+    d.node_id = G_NODE_ID;
+    d.parity = parity(d.temp, d.pressure, d.humidity, d.node_id);
+
+    #if DEBUG
+        Serial.print("Temp: ");
+        print_uint64_bin(d.node_id);
+        Serial.println("");
+
+        Serial.print("Temp: ");
+        print_uint64_bin(dec_of_float(d.temp));
+        Serial.println("");
+
+        Serial.print("Pressure: ");
+        print_uint64_bin(dec_of_float(d.pressure));
+        Serial.println("");
+
+        Serial.print("Humidity: ");
+        print_uint64_bin(dec_of_float(d.humidity));
+        Serial.println("");
+
+        Serial.print("Parity: ");
+        print_uint64_bin(d.parity);
+        Serial.println("");
+    #endif
+
     bool ok = radio.write(&d, sizeof(struct datagram));
     radio.startListening();
 

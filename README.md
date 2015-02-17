@@ -25,5 +25,5 @@ temp sensor.
 - Red + Blue: No response from the base station
 - Green: Transmit successful
 
-## Early Prototype
-![Early Prototype](/rev_0.1.jpg?raw=true "Early prototype")
+## Current Design (v0.4)
+![Early Prototype](/rev4.jpg?raw=true "Early prototype")

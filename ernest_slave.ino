@@ -220,27 +220,27 @@ void sendTemp(){
     d.node_id = G_NODE_ID;
     d.parity = parity(d.temp, d.pressure, d.humidity, d.node_id);
 
-    #if DEBUG
-        Serial.print("Temp: ");
-        print_uint64_bin(d.node_id);
-        Serial.println("");
+#if DEBUG
+    Serial.print("Node: ");
+    print_uint64_bin(d.node_id);
+    Serial.println("");
 
-        Serial.print("Temp: ");
-        print_uint64_bin(dec_of_float(d.temp));
-        Serial.println("");
+    Serial.print("Temp: ");
+    print_uint64_bin(dec_of_float(d.temp));
+    Serial.println("");
 
-        Serial.print("Pressure: ");
-        print_uint64_bin(dec_of_float(d.pressure));
-        Serial.println("");
+    Serial.print("Pressure: ");
+    print_uint64_bin(dec_of_float(d.pressure));
+    Serial.println("");
 
-        Serial.print("Humidity: ");
-        print_uint64_bin(dec_of_float(d.humidity));
-        Serial.println("");
+    Serial.print("Humidity: ");
+    print_uint64_bin(dec_of_float(d.humidity));
+    Serial.println("");
 
-        Serial.print("Parity: ");
-        print_uint64_bin(d.parity);
-        Serial.println("");
-    #endif
+    Serial.print("Parity: ");
+    print_uint64_bin(d.parity);
+    Serial.println("");
+#endif
 
     bool ok = radio.write(&d, sizeof(struct datagram));
     radio.startListening();

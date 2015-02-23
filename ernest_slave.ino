@@ -3,6 +3,7 @@
 #include <Wire.h>
 #include <nRF24L01.h>
 #include <RF24.h>
+#include <HIH61XX.h>
 #include "printf.h"
 
 #define DEBUG 0
@@ -28,6 +29,11 @@
 SFE_BMP180 sensor;
 // Altitude Medford, MA
 #define ALTITUDE 4.0
+short HW_HAVE_BMP180 = 1;
+
+// Temp/Humidity sensor
+HIH61XX hih(0x27, 8);
+short HW_HAVE_HIH6130 = 1;
 
 // nRF24L01 radio
 RF24 radio(PIN_R_CE, PIN_R_CSN);
@@ -43,6 +49,7 @@ unsigned long last_update_time = 0;
 // Atmospheric data
 float G_TEMP; // Celcius
 float G_PRESSURE; // Millibar
+float G_HUMIDITY;
 // Node data
 uint8_t G_NODE_ID;
 
@@ -58,7 +65,9 @@ struct datagram {
     uint64_t parity;
 };
 
-void updateTemp();
+
+void update_BMP180();
+void update_HIH6130();
 void sendTemp();
 void panic();
 void idle();
@@ -99,6 +108,9 @@ void setup() {
     printf_begin();
     delay(5000);
 
+    // Start I2C
+    Wire.begin();
+
     // Set output pins for the LEDs
     pinMode(PIN_L_OK, OUTPUT);
     pinMode(PIN_L_ERR, OUTPUT);
@@ -106,8 +118,20 @@ void setup() {
     setStatusPins(HIGH, LOW, LOW);
 
     // Setup atmospheric sensor
-    if (sensor.begin()){
-    } else {
+    if (!sensor.begin()){
+        HW_HAVE_BMP180 = 0;
+        Serial.println("No BMP180 found");
+    }
+
+    // Start the humidity sensor
+    hih.start();
+    if (hih.update()){
+        HW_HAVE_HIH6130 = 0;
+        Serial.println("No HIH6130 found");
+    }
+
+    // If we have no sensors, halt
+    if (!HW_HAVE_BMP180 && !HW_HAVE_HIH6130){
         panic();
     }
 
@@ -140,7 +164,12 @@ void loop() {
     if(millis() - last_update_time > update_interval) {
         last_update_time = millis();
         updateNodeID();
-        updateTemp();
+        if (HW_HAVE_BMP180){
+            update_BMP180();
+        }
+        if (HW_HAVE_HIH6130){
+            update_HIH6130();
+        }
         sendTemp();
     }
 
@@ -216,26 +245,22 @@ void sendTemp(){
     struct datagram d;
     d.temp = G_TEMP;
     d.pressure = G_PRESSURE;
-    d.humidity = 0;
+    d.humidity = G_HUMIDITY;
     d.node_id = G_NODE_ID;
     d.parity = parity(d.temp, d.pressure, d.humidity, d.node_id);
 
 #if DEBUG
     Serial.print("Node: ");
-    print_uint64_bin(d.node_id);
-    Serial.println("");
+    Serial.println(d.node_id);
 
     Serial.print("Temp: ");
-    print_uint64_bin(dec_of_float(d.temp));
-    Serial.println("");
+    Serial.println(d.temp);
 
     Serial.print("Pressure: ");
-    print_uint64_bin(dec_of_float(d.pressure));
-    Serial.println("");
+    Serial.println(d.pressure);
 
     Serial.print("Humidity: ");
-    print_uint64_bin(dec_of_float(d.humidity));
-    Serial.println("");
+    Serial.println(d.humidity);
 
     Serial.print("Parity: ");
     print_uint64_bin(d.parity);
@@ -268,7 +293,19 @@ void sendTemp(){
     }
 }
 
-void updateTemp(){
+void update_HIH6130(){
+    // Try and update
+    if (hih.update()){
+        G_HUMIDITY = NAN;
+        return;
+    }
+
+    // If we got a read, update
+    G_HUMIDITY = hih.humidity();
+    G_TEMP = hih.temperature();
+}
+
+void update_BMP180(){
     char status;
     double t_celsius, p_mbar;
     status = sensor.startTemperature();
@@ -281,7 +318,9 @@ void updateTemp(){
         // Function returns 1 if successful, 0 if failure.
         status = sensor.getTemperature(t_celsius);
         if (status != 0){
-            G_TEMP = t_celsius;
+            if (!HW_HAVE_HIH6130){
+                G_TEMP = t_celsius;
+            }
 
             // Start a pressure measurement:
             // The parameter is the oversampling setting, from 0 to 3
